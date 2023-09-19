@@ -114,16 +114,20 @@ const Chat = ({route}) => {
 
   return (
     <View className="flex-1">
-      <View className='p-4 bg-white shadow-md'>
+      <View className="p-4 bg-white shadow-md">
         <View className="flex-row">
-          <TouchableOpacity onPress={() => navigation.navigate('Home')} className='translate-y-1'>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Home')}
+            className="translate-y-1">
             <MaterialCommunityIcons
               name="arrow-left-thin"
               size={30}
               color={'#f57c00'}
             />
           </TouchableOpacity>
-          <Text className='text-[24px] px-2'>{contactName}</Text>
+          <Text className="text-[18px] px-2 text-black translate-y-1">
+            {contactName}
+          </Text>
         </View>
       </View>
       <GiftedChat
