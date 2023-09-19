@@ -70,7 +70,7 @@ const Users = () => {
                 contactName: item.displayName,
               })
             }>
-            <View className="flex-1 border-2 border-black rounded-xl m-3 p-3">
+            <View>
               <Text className="text-black font-bold">{item.displayName}</Text>
               {/* Add more contact info here */}
             </View>
