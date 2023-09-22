@@ -32,10 +32,6 @@ const Chat = ({route, navigation}) => {
       `chats/${selectedUser.uid}/${currentUser.uid}`,
     );
 
-    // Debugging: Check if the chatRef is pointing to the right location
-    console.log('Sender ChatRef Path:', senderChatRef.toString());
-    console.log('Receiver ChatRef Path:', receiverChatRef.toString());
-
     senderChatRef
       .orderByChild('timestamp') // Order by timestamp
       .on(
@@ -69,7 +65,6 @@ const Chat = ({route, navigation}) => {
   }, [currentUser, selectedUser]);
 
   const handleSnapshot = snapshot => {
-    console.log('Listener triggered for user:', currentUser.uid);
     if (snapshot.exists()) {
       const messagesData = snapshot.val();
       console.log('Messages data:', messagesData);
