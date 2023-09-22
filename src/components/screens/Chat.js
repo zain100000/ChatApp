@@ -12,6 +12,18 @@ const Chat = ({route, navigation}) => {
   const [isLoading, setIsLoading] = useState(true);
   const currentUser = auth().currentUser;
 
+  const formatTimestamp = timestamp => {
+    const date = new Date(timestamp);
+    const options = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    };
+    return date.toLocaleDateString(undefined, options);
+  };
+
   useEffect(() => {
     const senderChatRef = database().ref(
       `chats/${currentUser.uid}/${selectedUser.uid}`,
@@ -127,11 +139,13 @@ const Chat = ({route, navigation}) => {
         <ChatHeader selectedUser={selectedUser} navigation={navigation} />
       </View>
       {isLoading ? (
-        <Text className="flex-1 justify-center items-center">Loading...</Text>
+        <View className="flex-1 justify-center items-center">
+          <Text className=" text-black">Loading...</Text>
+        </View>
       ) : messages.length === 0 ? (
-        <Text className="flex-1 justify-center items-center">
-          No messages in this chat.
-        </Text>
+        <View className="flex-1 justify-center items-center">
+          <Text className=" text-black">No messages in this chat.</Text>
+        </View>
       ) : (
         <FlatList
           data={messages}
@@ -145,7 +159,7 @@ const Chat = ({route, navigation}) => {
               } rounded-lg mt-2 mx-2`}>
               <Text style="text-white">{item.text}</Text>
               <Text style="color: gray; font-size: 12px; margin-top: 4px">
-                {new Date(item.timestamp).toLocaleTimeString()}
+                {formatTimestamp(item.timestamp)}
               </Text>
             </View>
           )}
@@ -153,7 +167,7 @@ const Chat = ({route, navigation}) => {
       )}
       <View className="flex-row justify-around items-center mb-2">
         <TextInput
-          className="flex-1 px-6 py-2 border border-gray-500 rounded-full"
+          className="flex-1 px-6 py-2 border border-gray-500 rounded-full text-black"
           placeholder="Type your message"
           placeholderTextColor={'#000'}
           value={message}
