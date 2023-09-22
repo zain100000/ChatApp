@@ -10,6 +10,7 @@ const firebaseConfig = {
   messagingSenderId: '431947523732',
   appId: '1:431947523732:web:192228ff2028c0501df681',
   measurementId: 'G-K145Q839VC',
+  databaseURL: "https://chatapp-9f45f-default-rtdb.firebaseio.com",
 };
 
 firebase.initializeApp(firebaseConfig);

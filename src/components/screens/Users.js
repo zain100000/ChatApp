@@ -1,91 +1,82 @@
-import React, {useEffect, useState, useMemo} from 'react';
-import {View, Text, FlatList, TouchableOpacity, TextInput} from 'react-native';
-import Contacts from 'react-native-contacts';
-import {PermissionsAndroid} from 'react-native';
-import '../../../FirebaseConfig';
+import React, {useState, useEffect} from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
+import database from '@react-native-firebase/database';
+import auth from '@react-native-firebase/auth';
+import storage from '@react-native-firebase/storage';
 import {useNavigation} from '@react-navigation/native';
 
 const Users = () => {
-  const [contacts, setContacts] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [users, setUsers] = useState([]);
+  const currentUser = auth().currentUser;
   const navigation = useNavigation();
 
-  // Function to request contacts permission and fetch contacts
-  const requestContactsPermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_CONTACTS,
-        {
-          title: 'Contacts',
-          message: 'This app would like to view your contacts.',
-        },
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        // Fetch all contacts
-        const allContacts = await Contacts.getAll();
-        // Slice the array to get only the first 10 contacts (you can adjust the limit as needed)
-        const limitedContacts = allContacts.slice(0, 10); // Change the limit here
-        setContacts(limitedContacts);
-      } else {
-        console.log('Contacts permission denied.');
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  };
-
   useEffect(() => {
-    // Fetch and display limited contacts when the component initializes
-    requestContactsPermission();
-  }, []);
+    // Fetch the list of users from Firebase Realtime Database
+    const fetchUsers = async () => {
+      try {
+        const usersSnapshot = await database().ref('users').once('value');
+        const usersData = usersSnapshot.val();
+        if (usersData) {
+          // Convert the object of users into an array and filter out the current user
+          const usersArray = Object.values(usersData).filter(
+            user => user.uid !== currentUser.uid,
+          );
 
-  // Memoize the filtered contacts to improve performance
-  const filteredContacts = useMemo(() => {
-    return contacts
-      .filter(
-        contact =>
-          contact.displayName &&
-          contact.displayName.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [searchQuery, contacts]);
+          // Fetch and attach user images to the user objects
+          for (const user of usersArray) {
+            const imageRef = storage().ref(`users/${user.uid}`);
+            try {
+              const url = await imageRef.getDownloadURL();
+              user.imageURL = url;
+            } catch (error) {
+              // Handle errors (e.g., user doesn't have an image)
+              console.error('Error fetching user image:', error);
+              // You can provide a default image URL here if needed
+              user.imageURL = 'No Image';
+            }
+          }
+
+          setUsers(usersArray);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+
+    fetchUsers();
+  }, [currentUser]);
 
   return (
-    <View className="flex-1">
-      <TextInput
-        placeholder="Search contacts..."
-        placeholderTextColor={'black'}
-        onChangeText={text => setSearchQuery(text)}
-        value={searchQuery}
-        style={{
-          height: 40,
-          borderColor: 'gray',
-          borderWidth: 1,
-          margin: 10,
-          padding: 5,
-          color: '#000',
-        }}
-      />
+    <SafeAreaView className="flex-1">
       <FlatList
-        data={filteredContacts}
-        keyExtractor={item => item.recordID.toString()} // Ensure a unique key
+        data={users}
+        keyExtractor={item => item.uid}
         renderItem={({item}) => (
           <TouchableOpacity
-            onPress={() =>
-              navigation.navigate('Chat', {
-                contactName: item.displayName,
-              })
-            }>
-            <View className="flex-1 p-4">
-              <Text className="text-black font-bold text-md">
-                {item.displayName}
+            className="border-b-2 border-secondary"
+            onPress={() => {
+              navigation.navigate('Chat', {selectedUser: item});
+            }}>
+            <View className="flex-row items-center p-4">
+              <Image
+                source={{uri: item.imageURL || 'no image'}}
+                className="w-12 h-12 rounded-full mr-4"
+              />
+              <Text className="text-lg text-secondary font-semibold">
+                {item.fullname || 'No Name'}
               </Text>
-              {/* Add more contact info here */}
             </View>
           </TouchableOpacity>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
