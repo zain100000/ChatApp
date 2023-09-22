@@ -1,153 +1,84 @@
-import React, {useState, useCallback, useEffect} from 'react';
-import {GiftedChat} from 'react-native-gifted-chat';
-import firebase from 'firebase/compat';
-import {View, Text, TouchableOpacity} from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {useNavigation} from '@react-navigation/native';
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Button,
+} from 'react-native';
+import {database} from '../../../FirebaseConfig'; // Import your Firebase configuration
 
-const Chat = ({route}) => {
-  const {contactName, userId} = route.params;
-  const [fullname, setFullName] = useState('');
+const ChatScreen = ({route}) => {
+  const {contactName} = route.params;
   const [messages, setMessages] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const navigation = useNavigation();
+  const [newMessage, setNewMessage] = useState('');
 
-  const user1Id = 1; // Replace with the actual user ID for the current user
+  const chatRoomId = `${contactName}-chat`; // Unique chat room ID for each contact
 
-  // Fetch current user data from Firestore
   useEffect(() => {
-    async function fetchCurrentUser() {
-      try {
-        const userDoc = await firebase
-          .firestore()
-          .collection('users')
-          .doc(user1Id.toString())
-          .get();
-        if (userDoc.exists) {
-          const userData = userDoc.data();
-          setCurrentUser(userData);
-          setFullName(userData.fullname);
-        }
-      } catch (error) {
-        console.error('Error fetching current user data:', error);
+    // Set up a Firebase listener to retrieve messages for this chat room
+    const chatRef = database.ref(`chats/${chatRoomId}`);
+
+    chatRef.on('value', snapshot => {
+      const messageData = snapshot.val();
+      if (messageData) {
+        const messageList = Object.values(messageData);
+        setMessages(messageList);
+      } else {
+        setMessages([]);
       }
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => {
+      chatRef.off('value');
+    };
+  }, [chatRoomId]);
+
+  const sendMessage = () => {
+    if (newMessage.trim() === '') {
+      return;
     }
 
-    // Call the fetchCurrentUser function when the component mounts
-    fetchCurrentUser();
-  }, []);
+    const newMessageData = {
+      sender: 'You', // You can replace this with the actual sender's name or ID
+      content: newMessage,
+      timestamp: new Date().getTime(),
+    };
 
-  // Function to determine the message style based on the sender
-  const renderMessage = message => {
-    if (message.user._id === user1Id) {
-      // Message sent by the current user (display in blue on the right)
-      return {
-        ...message,
-        user: {
-          ...message.user,
-          name: currentUser ? currentUser.fullname : '',
-        },
-        sent: true,
-        received: true,
-        position: 'right',
-        containerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        textStyle: {
-          color: '#fff',
-        },
-      };
-    } else {
-      // Message sent by the other person (display in white on the left)
-      return {
-        ...message,
-        user: {
-          ...message.user,
-          name: contactName,
-        },
-        sent: true,
-        received: true,
-        position: 'left',
-        containerStyle: {
-          backgroundColor: '#fff',
-        },
-        textStyle: {
-          color: '#000',
-        },
-      };
-    }
+    // Push the new message to the chat room in the database
+    database.ref(`chats/${chatRoomId}`).push(newMessageData);
+
+    // Clear the input field
+    setNewMessage('');
   };
 
-  // Function to handle sending a message
-  const onSend = useCallback(
-    async (newMessages = []) => {
-      try {
-        const messageData = newMessages[0];
-
-        // Add the message to the "chats" collection and subcollection
-        await firebase
-          .firestore()
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .add({
-            text: messageData.text,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            user: {
-              _id: messageData.user._id,
-              name: fullname,
-            },
-          });
-
-        // Update the state with the new message
-        setMessages(prevMessages =>
-          GiftedChat.append(prevMessages, newMessages),
-        );
-      } catch (error) {
-        console.error('Error sending message:', error);
-      }
-    },
-    [fullname],
-  );
-
-  const chatId = generateChatId(user1Id, userId);
-
   return (
-    <View className="flex-1">
-      <View className="p-4 bg-white shadow-md">
-        <View className="flex-row">
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Home')}
-            className="translate-y-1">
-            <MaterialCommunityIcons
-              name="arrow-left-thin"
-              size={30}
-              color={'#f57c00'}
-            />
-          </TouchableOpacity>
-          <Text className="text-[18px] px-2 text-black translate-y-1">
-            {contactName}
-          </Text>
-        </View>
-      </View>
-      <GiftedChat
-        messages={messages.map(renderMessage)}
-        onSend={onSend}
-        user={{
-          _id: user1Id,
-          name: fullname,
-        }}
-        renderUsernameOnMessage={true}
-        alwaysShowSend
-        placeholder="Type your message..."
+    <View style={{flex: 1}}>
+      <FlatList
+        data={messages}
+        keyExtractor={item => item.timestamp.toString()}
+        renderItem={({item}) => (
+          <View style={{padding: 10}}>
+            <Text>
+              {item.sender}: {item.content}
+            </Text>
+          </View>
+        )}
       />
+      <View
+        style={{flexDirection: 'row', alignItems: 'center', borderTopWidth: 1}}>
+        <TextInput
+          placeholder="Type your message..."
+          onChangeText={text => setNewMessage(text)}
+          value={newMessage}
+          style={{flex: 1, padding: 10}}
+        />
+        <Button title="Send" onPress={sendMessage} />
+      </View>
     </View>
   );
 };
 
-function generateChatId(user1Id, user2Id) {
-  const sortedIds = [user1Id, user2Id].sort(); // Sort user IDs to ensure consistency
-  return sortedIds.join('_'); // Concatenate and hash the sorted user IDs
-}
-
-export default Chat;
+export default ChatScreen;

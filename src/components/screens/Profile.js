@@ -10,10 +10,9 @@ import {
 import imgPlaceHolder from '../../assets/avatar.png';
 import ImagePicker from 'react-native-image-crop-picker';
 import '../../../FirebaseConfig';
-import firebase from '@react-native-firebase/app';
 import auth from '@react-native-firebase/auth';
 import storage from '@react-native-firebase/storage';
-import firestore from '@react-native-firebase/firestore';
+import database from '@react-native-firebase/database';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Profile = () => {
@@ -37,7 +36,7 @@ const Profile = () => {
       if (imageUrl) {
         const user = authInstance.currentUser;
         if (user) {
-          const imageRef = storage().ref(`users/${user.uid}/`);
+          const imageRef = storage().ref(`users/${user.uid}/image.jpg`);
           await imageRef.delete();
         }
       }
@@ -65,8 +64,8 @@ const Profile = () => {
     const user = authInstance.currentUser;
     try {
       setLoading(true);
-      // Update the Firestore document with the new values
-      await firestore().collection('users').doc(user.uid).update({
+      // Update the Realtime Database with the new values
+      await database().ref(`users/${user.uid}`).update({
         imageUrl,
         fullname,
         description,
@@ -85,13 +84,12 @@ const Profile = () => {
       const user = authInstance.currentUser;
       if (user) {
         try {
-          const userDoc = await firestore()
-            .collection('users')
-            .doc(user.uid)
-            .get();
+          const userSnapshot = await database()
+            .ref(`users/${user.uid}`)
+            .once('value');
 
-          if (userDoc.exists) {
-            const userData = userDoc.data();
+          const userData = userSnapshot.val();
+          if (userData) {
             setFullName(userData.fullname);
             setDescription(userData.description);
             setImageUrl(userData.imageUrl);

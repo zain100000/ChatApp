@@ -11,13 +11,13 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useNavigation} from '@react-navigation/native';
-import {Picker} from '@react-native-picker/picker';
 import ImagePicker from 'react-native-image-crop-picker';
-import imgPlaceHolder from '../../assets/avatar.png';
-import '../../../FirebaseConfig';
+import {Picker} from '@react-native-picker/picker';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import database from '@react-native-firebase/database';
 import storage from '@react-native-firebase/storage';
+import messaging from '@react-native-firebase/messaging';
+import imgPlaceHolder from '../../assets/avatar.png';
 
 const Signup = () => {
   const navigation = useNavigation();
@@ -36,21 +36,29 @@ const Signup = () => {
         password,
       );
       const user = authCredential.user;
-      const userRef = firestore().collection('users').doc(user.uid);
-      const imageRef = storage().ref().child(`users/${user.uid}/`);
-      const imageBlob = await fetch(image.path).then(response =>
-        response.blob(),
-      );
-      await imageRef.put(imageBlob);
-      const imageUrl = await imageRef.getDownloadURL();
-      // Include UID in the user document
-      await userRef.set({
+
+      // Generate a message token
+      const token = await messaging().getToken();     
+
+      // Upload image to Firebase Cloud Storage
+      const imageRef = storage().ref(`users/${user.uid}`);
+      const task = imageRef.putFile(image.path);
+      await task;
+
+      // Get the image URL
+      const imageUrl = await imageRef.getDownloadURL();      
+
+      // Store other user data in the `users` collection
+      await database().ref(`users/${user.uid}`).set({
         uid: user.uid,
         role,
-        imageUrl,
         fullname,
         email,
+        imageUrl,
+        token,
       });
+
+      // Continue with navigation
       navigation.navigate('Login');
     } catch (error) {
       alert(error.message);

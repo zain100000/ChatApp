@@ -12,7 +12,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import {useNavigation} from '@react-navigation/native';
 import '../../../FirebaseConfig';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import database from '@react-native-firebase/database';
 
 const Login = () => {
   const navigation = useNavigation();
@@ -28,28 +28,24 @@ const Login = () => {
         password,
       );
       const user = authCredential.user;
-      const userRef = firestore().collection('users').doc(user.uid);
-      const userDoc = await userRef.get();
-      const role = userDoc.data().role;
-      if (role === 'User') {
-        navigation.navigate('Home');
+
+      // Fetch user data from Firebase Realtime Database
+      const userSnapshot = await database()
+        .ref(`users/${user.uid}`)
+        .once('value');
+      const userData = userSnapshot.val();
+
+      if (userData) {
+        const role = userData.role;
+        if (role === 'User') {
+          navigation.navigate('Home');
+        }
       }
     } catch (error) {
       alert(error.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleResetPassword = async () => {
-    auth()
-      .sendPasswordResetEmail(email)
-      .then(() => {
-        alert('Password reset email sent successfully');
-      })
-      .catch(error => {
-        alert('Error sending password reset email:', error);
-      });
   };
 
   return (
@@ -64,7 +60,6 @@ const Login = () => {
 
         <View className="flex-1 items-center">
           {/* Form */}
-
           <View className="flex-1 w-full px-5">
             <View className="flex-row mb-5 rounded-xl shadow-md p-4">
               <View className="translate-y-3 translate-x-2">
@@ -101,17 +96,7 @@ const Login = () => {
               />
             </View>
 
-            {/* Password Reset */}
-            <View className="flex-1 translate-y-5 translate-x-2">
-              <TouchableOpacity onPress={handleResetPassword}>
-                <Text className="text-black font-bold text-[18px]">
-                  Forget Password ?
-                </Text>
-              </TouchableOpacity>
-            </View>
-
             {/* Button */}
-
             <TouchableOpacity
               className="justify-center items-center mt-[40px]"
               onPress={handleLogin}>

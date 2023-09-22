@@ -3,7 +3,7 @@ import {Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import '../../../FirebaseConfig';
 import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import database from '@react-native-firebase/database';
 
 const Splash = () => {
   const navigation = useNavigation();
@@ -12,10 +12,14 @@ const Splash = () => {
     setTimeout(() => {
       const unsubscribe = auth().onAuthStateChanged(async user => {
         if (user) {
-          const userRef = firestore().collection('users').doc(user.uid);
-          const userDoc = await userRef.get();
-          if (userDoc.exists) {
-            const {role} = userDoc.data();
+          // Fetch user data from Firebase Realtime Database
+          const userSnapshot = await database()
+            .ref(`users/${user.uid}`)
+            .once('value');
+          const userData = userSnapshot.val();
+
+          if (userData) {
+            const {role} = userData;
             switch (role) {
               case 'User':
                 navigation.navigate('Home');
@@ -24,7 +28,7 @@ const Splash = () => {
                 console.log('Invalid department');
             }
           } else {
-            console.log('User document not found');
+            console.log('User data not found in Realtime Database');
           }
         } else {
           navigation.navigate('Login');
